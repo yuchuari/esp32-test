@@ -1,130 +1,85 @@
+//#include <DS3231.h>
 
-/*********
-  Rui Santos
-  Complete project details at https://randomnerdtutorials.com  
-*********/
-#include <DS1307RTC.h>
-#include <TimeLib.h>
+ 
+#include "RTClib.h"
+ 
 #include <LiquidCrystal_I2C.h>
-#include "Wire.h"
-
-// set the LCD number of columns and rows
-int lcdColumns = 16;
-int lcdRows = 2;
-
-// set LCD address, number of columns and rows
-// if you don't know your display address, run an I2C scanner sketch
-LiquidCrystal_I2C lcd(0x27, lcdColumns, lcdRows);  
-
-const char *monthName[12] = {
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-};
-
-tmElements_t tm;
-bool getTime(const char *str)
+LiquidCrystal_I2C lcd(0x27,20,4); //0x27 adalah alamat i2c di LCD
+#include <Wire.h>
+ 
+RTC_DS3231 rtc;
+ 
+char daysOfTheWeek[7][4] = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
+ 
+int Day; 
+int Month;
+int Year; 
+int Secs;
+int Minutes;
+int Hours;
+ 
+String dofweek; // hari
+ 
+String myDate; 
+String myTime;
+ 
+void setup () 
 {
-  int Hour, Min, Sec;
-
-  if (sscanf(str, "%d:%d:%d", &Hour, &Min, &Sec) != 3) return false;
-  tm.Hour = Hour;
-  tm.Minute = Min;
-  tm.Second = Sec;
-  return true;
-}
-
-bool getDate(const char *str)
-{
-  char Month[12];
-  int Day, Year;
-  uint8_t monthIndex;
-
-  if (sscanf(str, "%s %d %d", Month, &Day, &Year) != 3) return false;
-  for (monthIndex = 0; monthIndex < 12; monthIndex++) {
-    if (strcmp(Month, monthName[monthIndex]) == 0) break;
-  }
-  if (monthIndex >= 12) return false;
-  tm.Day = Day;
-  tm.Month = monthIndex + 1;
-  tm.Year = CalendarYrToTm(Year);
-  return true;
-}
-
-void setup(){
-  // initialize LCD
-  lcd.init();
-  // turn on LCD backlight                      
-  lcd.backlight();
-
-
-   bool parse=false;
-  bool config=false;
-
-  // get the date and time the compiler was run
-  if (getDate(__DATE__) && getTime(__TIME__)) {
-    parse = true;
-    // and configure the RTC with this info
-    if (RTC.write(tm)) {
-      config = true;
-    }
-
-  
-}
-}
-void loop(){
-  tmElements_t tm;
- /* // set cursor to first column, first row
-  lcd.setCursor(0, 0);
-  // print message
-  lcd.print("Hello, World!");
-  delay(1000);
-  // clears the display to print new message
+  Serial.begin(9600);
+  lcd.begin();
+  lcd.setCursor(2,0); 
+  lcd.print("WELCOME TO"); 
+  lcd.setCursor(2,1); 
+  lcd.print("pauzan.com"); 
+  delay(2000); // delay 2 detik
   lcd.clear();
-  // set cursor to first column, second row
-  lcd.setCursor(0,1);
-  lcd.print("Hello, World!");
-  delay(1000);
-  lcd.clear(); */
-  mostrarFecha();
+ 
+  if (! rtc.begin()) {
+  Serial.println("tidak menemukan RTC");
+  while (1);
 }
-
-String a2Digitos(int numero) {
-  if (numero >= 0 && numero < 10) {
-    return "0" + String(numero);
-  }
-  else
-  {
-    return String(numero); 
-  }
+ 
+  if (rtc.lostPower()) {
+  Serial.println("daya RTC hilang, set waktu");
+ 
+  // Comment out below lines once you set the date and time.
+  // Following line sets the RTC to the date &amp;amp;amp; time this sketch was compiled
+  //rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+ 
+  // Following line sets the RTC with an explicit date and time
+  // for example to set January 27 2017 at 12:56 you would call:
+  // rtc.adjust(DateTime(2017, 1, 27, 12, 56, 0));
 }
-
-void mostrarHora()
+}
+ 
+void loop () 
 {
-  lcd.setCursor(0,1);
-  lcd.print("Hora ");
-  lcd.setCursor(5,1);
-  lcd.print(a2Digitos(tm.Hour));
-  lcd.setCursor(7,1);
-  lcd.print(":");
-  lcd.setCursor(8,1);
-  lcd.print(a2Digitos(tm.Minute));
-  lcd.setCursor(10,1);
-  lcd.print(":");
-  lcd.setCursor(11,1);
-  lcd.print(a2Digitos(tm.Second));
-}
-
-void mostrarFecha()
-{
-  char *meses[] = {"", "ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"};
-  lcd.setCursor(0,1);
-  lcd.print(a2Digitos(tm.Day));
-  lcd.setCursor(2,1);
-  lcd.print(" de ");
-  lcd.setCursor(6,1);
-  lcd.print(meses[tm.Month]);
-  lcd.setCursor(9,1);
-  lcd.print(", ");
-  lcd.setCursor(11,1);
-  lcd.print(tmYearToCalendar(tm.Year));
+  DateTime now = rtc.now();
+  lcd.clear(); 
+  Day = now.day(); 
+  Month = now.month(); 
+  Year = now.year();
+  Secs = now.second(); 
+  Hours = now.hour(); 
+  Minutes = now.minute(); 
+  dofweek = daysOfTheWeek[now.dayOfTheWeek()]; 
+ 
+  myDate = myDate +dofweek+ ", "+ Day + "/" + Month + "/" + Year ; 
+  myTime = myTime + Hours +":"+ Minutes +":" + Secs ; 
+  // send to serial monitor
+  Serial.println(dofweek); 
+  Serial.println(myDate); 
+  Serial.println(myTime);
+  //Print on lcd
+  lcd.setCursor(0,0);
+  lcd.print("Date: "+myDate); 
+  lcd.setCursor(0,1); 
+  lcd.print("Hora: "+myTime); 
+  lcd.setCursor(0,2); 
+  lcd.print("Yandri J. Uchuari");
+  lcd.setCursor(0,3); 
+  lcd.print("yuchuari@outlook.com"); 
+  myDate = ""; 
+  myTime = ""; 
+  delay(800);
 }
